@@ -37,6 +37,7 @@ function createWindow() {
 
   // Show window when content is loaded
   mainWindow.once('ready-to-show', () => {
+    mainWindow.maximize();
     mainWindow.show();
   });
 
