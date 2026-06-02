@@ -28,6 +28,12 @@
       "target": ["AppImage"],
       "icon": "build/icon.svg",
       "category": "Education"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Lorenzo1901",
+      "repo": "Uni-Stats",
+      "releaseType": "release"
     }
   },
   "scripts": {

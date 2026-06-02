@@ -2,19 +2,46 @@ name: Build and Release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0)'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 jobs:
-  release-linux:
+  tag:
     runs-on: ubuntu-latest
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump version and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          git add package.json package-lock.json
+          git commit -m "chore: release v${{ github.event.inputs.version }}"
+          git tag v${{ github.event.inputs.version }}
+          git push
+          git push --tags
+
+  release-linux:
+    needs: tag
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Git repository
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ github.event.inputs.version }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -30,10 +57,13 @@ jobs:
         run: npm run electron:build -- --linux --publish always
 
   release-windows:
+    needs: tag
     runs-on: windows-latest
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+        with:
+          ref: v${{ github.event.inputs.version }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -49,10 +79,13 @@ jobs:
         run: npm run electron:build -- --win --publish always
 
   release-macos:
+    needs: tag
     runs-on: macos-latest
     steps:
       - name: Check out Git repository
         uses: actions/checkout@v4
+        with:
+          ref: v${{ github.event.inputs.version }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
