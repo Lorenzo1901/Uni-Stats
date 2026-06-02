@@ -25,7 +25,7 @@
       "icon": "build/icon.svg"
     },
     "linux": {
-      "target": ["AppImage", "pacman"],
+      "target": ["AppImage"],
       "icon": "build/icon.svg",
       "category": "Education"
     }
