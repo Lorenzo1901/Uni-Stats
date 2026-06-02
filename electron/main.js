@@ -21,6 +21,7 @@ function createWindow() {
       contextIsolation: false
     },
     autoHideMenuBar: true, // Hide the default menu bar
+    backgroundColor: '#050505', // Match app background to prevent glitch
     show: false // Don't show the window until it's ready to prevent flickering
   });
 

@@ -2,6 +2,7 @@
   "name": "tmpvite",
   "private": true,
   "version": "0.0.0",
+  "description": "A simple desktop application to track university exams and calculate averages.",
   "type": "module",
   "author": {
     "name": "Uni Stats Team",
