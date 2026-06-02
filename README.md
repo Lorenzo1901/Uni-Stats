@@ -1,8 +1,8 @@
-# Uni Stats 🎓
+# Uni Stats
 
 A simple, fast, and secure desktop application to track your university exams, calculate your averages (arithmetic and weighted), and project your graduation starting grade.
 
-## Features ✨
+## Features
 
 - **Offline First & Secure**: All your data is stored locally on your machine using your browser's local storage. No data is ever sent to an external server. Your personal data remains yours.
 - **Grade Projections**: Instantly see your weighted and arithmetic averages, and calculate the exact starting grade for your graduation (`(Weighted Average / 30) × 110`).
@@ -10,7 +10,7 @@ A simple, fast, and secure desktop application to track your university exams, c
 - **Visual Analytics**: Interactive charts to track your performance trend over time (by exam or by semester).
 - **Sleek Interface**: Built with modern web technologies, providing a fluid and premium dark-mode experience.
 
-## Getting Started 🚀
+## Getting Started
 
 ### Prerequisites
 - Node.js installed on your machine.
@@ -33,7 +33,7 @@ A simple, fast, and secure desktop application to track your university exams, c
    npm run dev
    ```
 
-## Technologies Used 💻
+## Technologies Used
 - React
 - Vite
 - Electron (for desktop packaging)
@@ -43,5 +43,5 @@ A simple, fast, and secure desktop application to track your university exams, c
 ## Privacy
 This app does not collect, transmit, or store any personal information externally. All exams and grades are stored locally within your application data.
 
-## License 📄
+## License
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
