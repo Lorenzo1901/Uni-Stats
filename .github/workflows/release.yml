@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   release-linux:
     runs-on: ubuntu-latest
@@ -19,7 +22,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --loglevel=error
 
       - name: Build and publish (Linux)
         env:
@@ -38,7 +41,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --loglevel=error
 
       - name: Build and publish (Windows)
         env:
@@ -57,7 +60,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --loglevel=error
 
       - name: Build and publish (macOS)
         env:
