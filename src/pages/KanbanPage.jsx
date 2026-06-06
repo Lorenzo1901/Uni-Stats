@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, GripVertical } from 'lucide-react';
-
-const INITIAL_COLUMNS = ['Da studiare', 'In ripasso', 'Fatto'];
+import { useTranslation } from '../i18n';
 
 export default function KanbanPage() {
+  const { t } = useTranslation();
+  const INITIAL_COLUMNS = [t('colToStudy'), t('colReviewing'), t('colDone')];
+
   const [tasks, setTasks] = useState(() => {
     const saved = localStorage.getItem('uniStats_kanban');
     return saved ? JSON.parse(saved) : [];
@@ -36,7 +38,7 @@ export default function KanbanPage() {
   const addTask = (e) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
-    setTasks([...tasks, { id: Date.now(), title: newTaskTitle.trim(), column: 'Da studiare' }]);
+    setTasks([...tasks, { id: Date.now(), title: newTaskTitle.trim(), column: t('colToStudy') }]);
     setNewTaskTitle('');
   };
 
@@ -47,18 +49,18 @@ export default function KanbanPage() {
   return (
     <div style={{ animation: 'contentFadeIn 0.3s ease' }}>
       <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
-        <h2><Plus size={24} /> Add Study Task</h2>
+        <h2><Plus size={24} /> {t('addStudyTask')}</h2>
         <form onSubmit={addTask} style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <input 
             type="text" 
             className="input-field" 
-            placeholder="E.g., Read chapter 4 of Algorithms"
+            placeholder={t('addTaskPlaceholder')}
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             style={{ flex: 1, minWidth: '200px' }}
           />
           <button type="submit" className="liquid-glass btn-inner" style={{ width: 'auto', padding: '0 2rem', borderRadius: '12px' }}>
-            Add
+            {t('add')}
           </button>
         </form>
       </div>
@@ -113,7 +115,7 @@ export default function KanbanPage() {
               ))}
               {tasks.filter(t => t.column === col).length === 0 && (
                 <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '0.875rem', padding: '2rem 0', fontStyle: 'italic' }}>
-                  No tasks here
+                  {t('noTasksHere')}
                 </div>
               )}
             </div>

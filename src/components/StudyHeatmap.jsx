@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
+import { useTranslation } from '../i18n';
 
 export default function StudyHeatmap({ studyLogs, exams, onCellClick }) {
+  const { t } = useTranslation();
   const weeksCount = 14;
   
   const { weeks, months } = useMemo(() => {
@@ -57,7 +59,7 @@ export default function StudyHeatmap({ studyLogs, exams, onCellClick }) {
 
   const getColor = (intensity) => {
     switch(intensity) {
-      case 4: return '#39d353'; // Bright green for passed exam
+      case 4: return '#38bdf8'; // Light blue for passed exam
       case 3: return '#26a641';
       case 2: return '#006d32';
       case 1: return '#0e4429';
@@ -66,8 +68,8 @@ export default function StudyHeatmap({ studyLogs, exams, onCellClick }) {
     }
   };
 
-  const cellSize = 14;
-  const cellGap = 4;
+  const cellSize = 24;
+  const cellGap = 6;
   const colWidth = cellSize + cellGap;
 
   return (
@@ -97,7 +99,7 @@ export default function StudyHeatmap({ studyLogs, exams, onCellClick }) {
               {week.map((cell) => (
                 <div 
                   key={cell.date}
-                  title={`${cell.date}: ${cell.passedExam ? 'Passed ' + cell.examName : cell.hours + ' study hours'}`}
+                  title={`${cell.date}: ${cell.passedExam ? t('passed') + ' ' + cell.examName : cell.hours + ' ' + t('studyHours')}`}
                   onClick={() => onCellClick && onCellClick(cell)}
                   style={{
                     width: `${cellSize}px`, 
@@ -117,15 +119,15 @@ export default function StudyHeatmap({ studyLogs, exams, onCellClick }) {
       
       {/* Legend */}
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)', flexWrap: 'wrap' }}>
-        <span>Less</span>
+        <span>{t('less')}</span>
         <div style={{width: cellSize, height: cellSize, backgroundColor: getColor(0), borderRadius: 3}}></div>
         <div style={{width: cellSize, height: cellSize, backgroundColor: getColor(1), borderRadius: 3}}></div>
         <div style={{width: cellSize, height: cellSize, backgroundColor: getColor(2), borderRadius: 3}}></div>
         <div style={{width: cellSize, height: cellSize, backgroundColor: getColor(3), borderRadius: 3}}></div>
-        <span>More</span>
+        <span>{t('more')}</span>
         <span style={{marginLeft: '0.5rem', marginRight: '0.5rem'}}>|</span>
         <div style={{width: cellSize, height: cellSize, backgroundColor: getColor(4), borderRadius: 3}}></div>
-        <span>Exam Passed</span>
+        <span>{t('examPassed')}</span>
       </div>
     </div>
   );

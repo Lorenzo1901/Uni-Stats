@@ -1,6 +1,9 @@
 import { LayoutDashboard, KanbanSquare } from 'lucide-react';
+import { useTranslation } from '../i18n';
 
 export default function Navbar({ currentPage, setPage }) {
+  const { t } = useTranslation();
+
   return (
     <nav style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
       <button 
@@ -16,7 +19,7 @@ export default function Navbar({ currentPage, setPage }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff', fontSize: '1.05rem', fontWeight: 500 }}>
-          <LayoutDashboard size={20} /> Stats & Projections
+          <LayoutDashboard size={20} /> {t('navStats')}
         </div>
       </button>
       <button 
@@ -32,7 +35,7 @@ export default function Navbar({ currentPage, setPage }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#fff', fontSize: '1.05rem', fontWeight: 500 }}>
-          <KanbanSquare size={20} /> Study Kanban
+          <KanbanSquare size={20} /> {t('navKanban')}
         </div>
       </button>
     </nav>

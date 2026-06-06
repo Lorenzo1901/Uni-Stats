@@ -6,60 +6,11 @@ import StudyHeatmap from '../components/StudyHeatmap';
 
 const DEFAULT_EXAMS = [];
 
-const CustomSelect = ({ value, onChange, options }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const handleSelect = (val) => {
-    onChange({ target: { value: val } });
-    setIsOpen(false);
-  };
-  const selectedLabel = options.find(o => o.value === value)?.label || 'Select...';
-  return (
-    <>
-      {isOpen && <div style={{position: 'fixed', inset: 0, zIndex: 99}} onClick={() => setIsOpen(false)} />}
-      <div style={{ position: 'relative', zIndex: isOpen ? 100 : 1, width: '100%' }}>
-        <div 
-          className="input-field" 
-          onClick={() => setIsOpen(!isOpen)}
-          style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-        >
-          <span>{selectedLabel}</span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </div>
-        {isOpen && (
-          <div 
-            className="liquid-glass" 
-            style={{ 
-              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem',
-              maxHeight: '200px', overflowY: 'auto', borderRadius: '0.75rem', padding: '0.5rem',
-              background: 'rgba(20, 20, 20, 0.85)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-              border: '1px solid rgba(255,255,255,0.1)'
-            }}
-          >
-            {options.map(opt => {
-              const isSelected = value === opt.value;
-              return (
-                <div 
-                  key={opt.value} 
-                  className={`custom-select-option ${isSelected ? 'selected' : ''}`}
-                  onClick={() => handleSelect(opt.value)}
-                  style={{
-                    padding: '0.75rem 1rem', cursor: 'pointer', borderRadius: '0.5rem',
-                    transition: 'background 0.2s', marginBottom: '0.25rem'
-                  }}
-                >
-                  {opt.label}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </>
-  );
-};
+import CustomSelect from '../components/CustomSelect';
+import { useTranslation } from '../i18n';
 
 const CustomDatePicker = ({ value, onChange }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(() => {
     return value ? new Date(value) : new Date();
@@ -92,7 +43,7 @@ const CustomDatePicker = ({ value, onChange }) => {
   const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const dayNames = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-  const displayValue = value ? value.split('-').reverse().join('/') : 'Select Date';
+  const displayValue = value ? value.split('-').reverse().join('/') : t('selectDate');
   const [selY, selM, selD] = value ? value.split('-').map(Number) : [null, null, null];
 
   return (
@@ -113,7 +64,7 @@ const CustomDatePicker = ({ value, onChange }) => {
             style={{ 
               position: 'absolute', top: '100%', left: 0, marginTop: '0.5rem',
               borderRadius: '0.75rem', padding: '1rem', width: '310px',
-              background: 'rgba(20, 20, 20, 0.85)',
+              background: '#000000',
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
               border: '1px solid rgba(255,255,255,0.1)'
             }}
@@ -158,7 +109,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                 onMouseOver={(e) => e.target.style.background = 'rgba(255,255,255,0.1)'}
                 onMouseOut={(e) => e.target.style.background = 'transparent'}
               >
-                Today
+                {t('today')}
               </button>
             </div>
           </div>
@@ -166,7 +117,11 @@ const CustomDatePicker = ({ value, onChange }) => {
       </div>
     </>
   );
-};export default function StatsPage() {
+};
+
+export default function StatsPage() {
+  const { t } = useTranslation();
+
   // Exams arrays
   const [existingExams, setExistingExams] = useState(() => {
     const saved = localStorage.getItem('uniStats_exams');
@@ -405,7 +360,7 @@ const CustomDatePicker = ({ value, onChange }) => {
     const currentWeightedSum = results.weightedAvg * results.totalCredits;
     const remainingCredits = totalDegreeCredits - results.totalCredits;
     
-    if (remainingCredits <= 0) return { feasible: false, message: "No credits remaining.", requiredAvg: null };
+    if (remainingCredits <= 0) return { feasible: false, message: t("noCreditsRemaining"), requiredAvg: null };
     
     // (targetWeightedAvg / 30) * 110 = targetGrade
     const targetWeightedAvg = (targetGrade * 30) / 110;
@@ -415,13 +370,13 @@ const CustomDatePicker = ({ value, onChange }) => {
     const requiredAvg = requiredWeightedSumForRemaining / remainingCredits;
     
     let feasible = true;
-    let message = `You need a ${requiredAvg.toFixed(2)} average in your remaining ${remainingCredits} CFU.`;
+    let message = t("youNeedAvg", { avg: requiredAvg.toFixed(2), cred: remainingCredits });
     
     if (requiredAvg > 30) {
       feasible = false;
-      message = `Mathematically impossible (requires ${requiredAvg.toFixed(2)} > 30).`;
+      message = `${t("mathematicallyImpossible")} (${t("requiresAvg", { avg: requiredAvg.toFixed(2) })} > 30).`;
     } else if (requiredAvg < 18) {
-      message = `Easily achievable (requires only ${requiredAvg.toFixed(2)}).`;
+      message = `${t("easilyAchievable")} (${t("requiresAvg", { avg: requiredAvg.toFixed(2) })}).`;
     }
     
     return {
@@ -490,15 +445,15 @@ const CustomDatePicker = ({ value, onChange }) => {
                 <span style={{ fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>{exam.name}</span>
                 <div className="exam-info" style={{ gap: '1rem' }}>
                   <div className="exam-stat">
-                    <span className="exam-stat-label">Grade</span>
+                    <span className="exam-stat-label">{t("grade")}</span>
                     <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.grade}</span>
                   </div>
                   <div className="exam-stat">
-                    <span className="exam-stat-label">Credits</span>
+                    <span className="exam-stat-label">{t("credits")}</span>
                     <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.credits} CFU</span>
                   </div>
                   <div className="exam-stat">
-                    <span className="exam-stat-label">Date</span>
+                    <span className="exam-stat-label">{t('date')}</span>
                     <span className="exam-stat-value" style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
                       {new Date(exam.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                     </span>
@@ -570,19 +525,19 @@ const CustomDatePicker = ({ value, onChange }) => {
           <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
             <h2><BookOpen size={24} /> Your Exams</h2>
             <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>
-              Exams are grouped by semester and sorted chronologically. Click the toggle to exclude an exam.
+              {t("yourExamsDesc")}
             </p>
             
-            {renderSemesterGroup('a1s1', 'Year 1 - Semester 1')}
-            {renderSemesterGroup('a1s2', 'Year 1 - Semester 2')}
-            {renderSemesterGroup('a2s1', 'Year 2 - Semester 1')}
-            {renderSemesterGroup('a2s2', 'Year 2 - Semester 2')}
-            {renderSemesterGroup('a3s1', 'Year 3 - Semester 1')}
-            {renderSemesterGroup('a3s2', 'Year 3 - Semester 2')}
-            {renderSemesterGroup('a4s1', 'Year 4 - Semester 1')}
-            {renderSemesterGroup('a4s2', 'Year 4 - Semester 2')}
-            {renderSemesterGroup('a5s1', 'Year 5 - Semester 1')}
-            {renderSemesterGroup('a5s2', 'Year 5 - Semester 2')}
+            {renderSemesterGroup('a1s1', t('semesterA1S1'))}
+            {renderSemesterGroup('a1s2', t('semesterA1S2'))}
+            {renderSemesterGroup('a2s1', t('semesterA2S1'))}
+            {renderSemesterGroup('a2s2', t('semesterA2S2'))}
+            {renderSemesterGroup('a3s1', t('semesterA3S1'))}
+            {renderSemesterGroup('a3s2', t('semesterA3S2'))}
+            {renderSemesterGroup('a4s1', t('semesterA4S1'))}
+            {renderSemesterGroup('a4s2', t('semesterA4S2'))}
+            {renderSemesterGroup('a5s1', t('semesterA5S1'))}
+            {renderSemesterGroup('a5s2', t('semesterA5S2'))}
             
             <button 
               type="button" 
@@ -598,17 +553,17 @@ const CustomDatePicker = ({ value, onChange }) => {
             <h2><TrendingUp size={24} /> Simulate New Exams</h2>
               <form onSubmit={addSimulatedExam} className="input-row" style={{ flexWrap: 'wrap', marginBottom: 0 }}>
                 <div className="form-group" style={{ minWidth: '100%', marginBottom: '0.5rem' }}>
-                  <label>Exam Name (Optional)</label>
+                  <label>{t("examNameOptional")}</label>
                   <input 
                     type="text" 
                     className="input-field" 
-                    placeholder="e.g. Thesis"
+                    placeholder={t("examNameOptional")}
                     value={simName}
                     onChange={(e) => setSimName(e.target.value)}
                   />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label>Expected Grade</label>
+                  <label>{t("expectedGrade")}</label>
                   <input 
                     type="number" 
                     className="input-field" 
@@ -618,7 +573,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                   />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label>Credits (CFU)</label>
+                  <label>{t("credits")}</label>
                   <input 
                     type="number" 
                     className="input-field" 
@@ -642,11 +597,11 @@ const CustomDatePicker = ({ value, onChange }) => {
                         <span style={{ fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>{exam.name}</span>
                         <div className="exam-info" style={{ gap: '1rem' }}>
                           <div className="exam-stat">
-                            <span className="exam-stat-label">Grade</span>
+                            <span className="exam-stat-label">{t("grade")}</span>
                             <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.grade}</span>
                           </div>
                           <div className="exam-stat">
-                            <span className="exam-stat-label">Credits</span>
+                            <span className="exam-stat-label">{t("credits")}</span>
                             <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.credits} CFU</span>
                           </div>
                         </div>
@@ -671,34 +626,34 @@ const CustomDatePicker = ({ value, onChange }) => {
               <div className="info-tooltip-container">
                 <Info size={20} color="rgba(255,255,255,0.6)" />
                 <div className="info-tooltip-text">
-                  <strong>Note:</strong> The graduation starting grade is calculated as <code>(Weighted Average / 30) × 110</code>. This is the exact base score before any additional points for your thesis or graduation defense are applied.
+                  {t("noteStartingGrade")}
                 </div>
               </div>
             </div>
               
               <div className="results-grid">
                 <div className="result-card highlight">
-                  <div className="result-label">Graduation Starting Grade</div>
+                  <div className="result-label">{t("graduationStartingGrade")}</div>
                   <div className="result-value">{results.startingGrade} <span style={{fontSize: '1rem', color: 'rgba(255,255,255,0.7)'}}>/ 110</span></div>
                 </div>
                 
                 <div className="result-card">
-                  <div className="result-label">Weighted Avg</div>
+                  <div className="result-label">{t("weightedAvg")}</div>
                   <div className="result-value">{results.weightedAvg}</div>
                 </div>
                 
                 <div className="result-card">
-                  <div className="result-label">Arithmetic Avg</div>
+                  <div className="result-label">{t("arithmeticAvg")}</div>
                   <div className="result-value">{results.arithmeticAvg}</div>
                 </div>
 
                 <div className="result-card">
-                  <div className="result-label">Valid Credits</div>
+                  <div className="result-label">{t("validCredits")}</div>
                   <div className="result-value">{results.totalCredits}</div>
                 </div>
                 
                 <div className="result-card">
-                  <div className="result-label">Valid Exams</div>
+                  <div className="result-label">{t("validExams")}</div>
                   <div className="result-value">{results.totalExams}</div>
                 </div>
               </div>
@@ -709,7 +664,7 @@ const CustomDatePicker = ({ value, onChange }) => {
             <h2><Target size={24} /> Goal: Graduation Grade</h2>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label>Target Grade</label>
+                <label>{t("targetGrade")}</label>
                 <input 
                   type="number" 
                   className="input-field" 
@@ -719,7 +674,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                 />
               </div>
               <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                <label>Total Degree Credits</label>
+                <label>{t("totalDegreeCredits")}</label>
                 <input 
                   type="number" 
                   className="input-field" 
@@ -743,9 +698,9 @@ const CustomDatePicker = ({ value, onChange }) => {
 
           {/* Study Heatmap Panel */}
           <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', gap: '1.25rem' }}>
               <h2 style={{ margin: 0 }}><Activity size={24} /> Study Heatmap</h2>
-              <form onSubmit={logStudyHours} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <form onSubmit={logStudyHours} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: '160px' }}>
                   <CustomDatePicker 
                     value={studyDateInput}
@@ -763,7 +718,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                   min="0.5"
                 />
                 <button type="submit" className="liquid-glass btn-inner" style={{ padding: '0.85rem 1.25rem', width: 'auto', borderRadius: '0.75rem' }}>
-                  Log
+                  {t("log")}
                 </button>
               </form>
             </div>
@@ -867,10 +822,10 @@ const CustomDatePicker = ({ value, onChange }) => {
       {isModalOpen && createPortal(
         <div className="modal-overlay">
           <div className="modal-content liquid-glass">
-            <h2>{editingExamId ? 'Edit Exam' : 'Add New Exam'}</h2>
+            <h2>{editingExamId ? t("editExam") : t("addNewExam")}</h2>
             <form onSubmit={saveModalExam}>
               <div className="form-group">
-                <label>Exam Name</label>
+                <label>{t("examName")}</label>
                 <input 
                   type="text" 
                   className="input-field" 
@@ -881,7 +836,7 @@ const CustomDatePicker = ({ value, onChange }) => {
               </div>
               <div className="input-row" style={{ marginTop: '1rem' }}>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label>Grade</label>
+                  <label>{t("grade")}</label>
                   <input 
                     type="number" 
                     className="input-field" 
@@ -893,7 +848,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                   />
                 </div>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label>Credits (CFU)</label>
+                  <label>{t("credits")}</label>
                   <input 
                     type="number" 
                     className="input-field" 
@@ -906,14 +861,14 @@ const CustomDatePicker = ({ value, onChange }) => {
               </div>
               <div className="input-row" style={{ marginTop: '1rem' }}>
                 <div className="form-group" style={{ flex: 1 }}>
-                  <label>Date</label>
+                  <label>{t("date")}</label>
                   <CustomDatePicker 
                     value={modalDate}
                     onChange={(e) => setModalDate(e.target.value)}
                   />
                 </div>
                 <div className="form-group" style={{ flex: 1, position: 'relative' }}>
-                  <label>Semester</label>
+                  <label>{t("semester")}</label>
                   <CustomSelect 
                     value={modalSemester}
                     onChange={(e) => setModalSemester(e.target.value)}
@@ -933,7 +888,7 @@ const CustomDatePicker = ({ value, onChange }) => {
                 </div>
               </div>
               <div className="modal-actions" style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
-                <button type="button" className="btn btn-secondary static-btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} onClick={() => setIsModalOpen(false)}>Cancel</button>
+                <button type="button" className="btn btn-secondary static-btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} onClick={() => setIsModalOpen(false)}>{t("cancel")}</button>
                 <button type="submit" className="btn static-btn" style={{ flex: 1 }}>{editingExamId ? 'Save Changes' : 'Add Exam'}</button>
               </div>
             </form>
@@ -967,8 +922,8 @@ const CustomDatePicker = ({ value, onChange }) => {
                 <button type="button" className="btn-icon delete-btn" style={{ padding: '0 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={deleteStudyEdit} title="Clear hours for this day">
                   <Trash2 size={24} />
                 </button>
-                <button type="button" className="btn btn-secondary static-btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} onClick={() => setIsStudyModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn static-btn" style={{ flex: 1 }}>Save Changes</button>
+                <button type="button" className="btn btn-secondary static-btn" style={{ flex: 1, backgroundColor: 'rgba(255,255,255,0.1)' }} onClick={() => setIsStudyModalOpen(false)}>{t("cancel")}</button>
+                <button type="submit" className="btn static-btn" style={{ flex: 1 }}>{t("saveChanges")}</button>
               </div>
             </form>
           </div>
