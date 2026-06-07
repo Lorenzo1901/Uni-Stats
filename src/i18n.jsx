@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import customStorage from './storage';
 
 const translations = {
   en: {
@@ -11,7 +12,7 @@ const translations = {
     year: "Year",
     semester: "Semester",
     grade: "Grade",
-    credits: "Credits",
+    credits: "Credits (CFU)",
     date: "Date",
     addNewExam: "Add New Exam",
     simulateNewExams: "Simulate New Exams",
@@ -30,6 +31,10 @@ const translations = {
     studyHeatmap: "Study Heatmap",
     log: "Log",
     performanceTrend: "Performance Trend",
+    byExam: "By Exam",
+    bySemester: "By Semester",
+    chartDisclaimerExam: "*This chart plots the running average up to each exam. Simulated exams are excluded.",
+    chartDisclaimerSemester: "*This chart plots the running average up to each semester. Simulated exams are excluded.",
     noteStartingGrade: "Note: The graduation starting grade is calculated as (Weighted Average / 30) × 110. This is the exact base score before any additional points for your thesis or graduation defense are applied.",
     noCreditsRemaining: "No credits remaining.",
     mathematicallyImpossible: "Mathematically impossible",
@@ -87,7 +92,7 @@ const translations = {
     expectedGrade: "Voto Atteso",
     addSimulatedExam: "Aggiungi Esame Simulato",
     finalProjections: "Proiezioni Finali",
-    graduationStartingGrade: "Voto di Base di Laurea",
+    graduationStartingGrade: "Voto di Partenza",
     weightedAvg: "Media Ponderata",
     arithmeticAvg: "Media Aritmetica",
     validCredits: "Crediti Validi",
@@ -96,9 +101,13 @@ const translations = {
     targetGrade: "Voto Obiettivo",
     totalDegreeCredits: "Crediti Totali Corso",
     studyHeatmap: "Heatmap di Studio",
-    log: "Aggiungi",
-    performanceTrend: "Andamento Rendimento",
-    noteStartingGrade: "Nota: Il voto di partenza è calcolato come (Media Ponderata / 30) × 110. Questo è il punteggio esatto prima di qualsiasi punto aggiuntivo per tesi o discussione.",
+    log: "Registra",
+    performanceTrend: "Rendimento",
+    byExam: "Per Esame",
+    bySemester: "Per Semestre",
+    chartDisclaimerExam: "*Questo grafico mostra l'andamento della media fino ad ogni esame. Gli esami simulati sono esclusi.",
+    chartDisclaimerSemester: "*Questo grafico mostra l'andamento della media fino ad ogni semestre. Gli esami simulati sono esclusi.",
+    noteStartingGrade: "Nota: Il voto di partenza è calcolato come (Media Ponderata / 30) × 110. Questo è il punteggio esatto prima di qualsiasi punto aggiuntivo per la prova finale.",
     noCreditsRemaining: "Nessun credito rimanente.",
     mathematicallyImpossible: "Matematicamente impossibile",
     easilyAchievable: "Facilmente raggiungibile",
@@ -143,12 +152,12 @@ const TranslationContext = createContext();
 
 export function TranslationProvider({ children }) {
   const [lang, setLang] = useState(() => {
-    const saved = localStorage.getItem('uniStats_lang');
+    const saved = customStorage.getItem('uniStats_lang');
     return saved ? saved : 'en';
   });
 
   useEffect(() => {
-    localStorage.setItem('uniStats_lang', lang);
+    customStorage.setItem('uniStats_lang', lang);
   }, [lang]);
 
   const t = (key, params = {}) => {

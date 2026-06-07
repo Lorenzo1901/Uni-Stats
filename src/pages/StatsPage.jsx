@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, Trash2, GraduationCap, TrendingUp, BookOpen, CheckCircle, XCircle, BarChart2, Edit2, Info, ChevronLeft, ChevronRight, Target, Activity } from 'lucide-react';
+import { Plus, Trash2, GraduationCap, TrendingUp, BookOpen, CheckCircle, XCircle, BarChart2, Edit2, Info, ChevronLeft, ChevronRight, Target, Activity, ChevronDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import StudyHeatmap from '../components/StudyHeatmap';
 
@@ -8,6 +8,7 @@ const DEFAULT_EXAMS = [];
 
 import CustomSelect from '../components/CustomSelect';
 import { useTranslation } from '../i18n';
+import customStorage from '../storage';
 
 const CustomDatePicker = ({ value, onChange }) => {
   const { t } = useTranslation();
@@ -124,15 +125,22 @@ export default function StatsPage() {
 
   // Exams arrays
   const [existingExams, setExistingExams] = useState(() => {
-    const saved = localStorage.getItem('uniStats_exams');
+    const saved = customStorage.getItem('uniStats_exams');
     if (saved) {
-      try { return JSON.parse(saved); } catch { return DEFAULT_EXAMS; }
+      try { 
+        let parsed = saved;
+        if (typeof saved === 'string') {
+           parsed = JSON.parse(saved); 
+        }
+        if (parsed.length <= 1) return DEFAULT_EXAMS;
+        return parsed;
+      } catch { return DEFAULT_EXAMS; }
     }
     return DEFAULT_EXAMS;
   });
 
   useEffect(() => {
-    localStorage.setItem('uniStats_exams', JSON.stringify(existingExams));
+    customStorage.setItem('uniStats_exams', JSON.stringify(existingExams));
   }, [existingExams]);
 
   const [simulatedExams, setSimulatedExams] = useState([]);
@@ -152,10 +160,6 @@ export default function StatsPage() {
   // New features state
   const [targetGrade, setTargetGrade] = useState(110);
   const [totalDegreeCredits, setTotalDegreeCredits] = useState(180);
-  const [studyLogs, setStudyLogs] = useState(() => {
-    const saved = localStorage.getItem('uniStats_studyLogs');
-    return saved ? JSON.parse(saved) : [];
-  });
   const [studyHoursInput, setStudyHoursInput] = useState('');
   const [studyDateInput, setStudyDateInput] = useState(() => new Date().toISOString().split('T')[0]);
 
@@ -164,8 +168,36 @@ export default function StatsPage() {
   const [editingStudyDate, setEditingStudyDate] = useState('');
   const [editingStudyHours, setEditingStudyHours] = useState('');
 
+  // Expand/Collapse state for exams list
+  const [isExamsListExpanded, setIsExamsListExpanded] = useState(false);
+  const [expandedSemesters, setExpandedSemesters] = useState({});
+
+  const toggleSemester = (semId) => {
+    setExpandedSemesters(prev => ({
+      ...prev,
+      [semId]: !prev[semId]
+    }));
+  };
+
+  // Logs for heatmap
+  const [studyLogs, setStudyLogs] = useState(() => {
+    const saved = customStorage.getItem('uniStats_studyLogs');
+    if (saved) {
+      try {
+        let parsed = saved;
+        if (typeof saved === 'string') {
+           parsed = JSON.parse(saved); 
+        }
+        return parsed;
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   useEffect(() => {
-    localStorage.setItem('uniStats_studyLogs', JSON.stringify(studyLogs));
+    customStorage.setItem('uniStats_studyLogs', JSON.stringify(studyLogs));
   }, [studyLogs]);
 
   const logStudyHours = (e) => {
@@ -360,7 +392,9 @@ export default function StatsPage() {
     const currentWeightedSum = results.weightedAvg * results.totalCredits;
     const remainingCredits = totalDegreeCredits - results.totalCredits;
     
-    if (remainingCredits <= 0) return { feasible: false, message: t("noCreditsRemaining"), requiredAvg: null };
+    let colorObj = { bg: 'rgba(0,0,0,0.2)', border: 'rgba(255,255,255,0.1)', text: 'rgba(255,255,255,0.9)' };
+    
+    if (remainingCredits <= 0) return { feasible: false, message: t("noCreditsRemaining"), requiredAvg: null, colorObj };
     
     // (targetWeightedAvg / 30) * 110 = targetGrade
     const targetWeightedAvg = (targetGrade * 30) / 110;
@@ -378,14 +412,33 @@ export default function StatsPage() {
     } else if (requiredAvg < 18) {
       message = `${t("easilyAchievable")} (${t("requiresAvg", { avg: requiredAvg.toFixed(2) })}).`;
     }
+
+    if (!feasible) {
+       colorObj = { bg: 'rgba(255, 50, 50, 0.2)', border: 'rgba(255, 50, 50, 0.5)', text: '#ff6b6b' };
+    } else {
+       const req = requiredAvg;
+       const curr = parseFloat(results.weightedAvg);
+       if (req <= curr) {
+         colorObj = { bg: 'rgba(50, 255, 50, 0.2)', border: 'rgba(50, 255, 50, 0.5)', text: '#6bff6b' };
+       } else {
+         const ratio = (req - curr) / (30 - curr);
+         const hue = Math.max(0, 60 * (1 - ratio)); 
+         colorObj = { 
+           bg: `hsla(${hue}, 100%, 50%, 0.2)`, 
+           border: `hsla(${hue}, 100%, 50%, 0.5)`, 
+           text: `hsl(${hue}, 100%, 70%)` 
+         };
+       }
+    }
     
     return {
       remainingCredits,
       requiredAvg: requiredAvg.toFixed(2),
       feasible,
-      message
+      message,
+      colorObj
     };
-  }, [results, targetGrade, totalDegreeCredits]);
+  }, [results, targetGrade, totalDegreeCredits, t]);
 
   const chartData = useMemo(() => {
     let sortedExams = [...existingExams.filter(e => !e.excluded)];
@@ -400,8 +453,8 @@ export default function StatsPage() {
         count += 1;
         return {
           name: exam.name.substring(0, 15) + (exam.name.length > 15 ? '...' : ''),
-          'Weighted Average': parseFloat((sumW / cred).toFixed(2)),
-          'Arithmetic Average': parseFloat((sumA / count).toFixed(2)),
+          [t('weightedAvg')]: parseFloat((sumW / cred).toFixed(2)),
+          [t('arithmeticAvg')]: parseFloat((sumA / count).toFixed(2)),
         };
       });
     } else {
@@ -420,41 +473,58 @@ export default function StatsPage() {
           });
           data.push({
             name: sem.toUpperCase(),
-            'Weighted Average': parseFloat((sumW / cred).toFixed(2)),
-            'Arithmetic Average': parseFloat((sumA / count).toFixed(2)),
+            [t('weightedAvg')]: parseFloat((sumW / cred).toFixed(2)),
+            [t('arithmeticAvg')]: parseFloat((sumA / count).toFixed(2)),
           });
         }
       });
       return data;
     }
-  }, [existingExams, plotView]);
+  }, [existingExams, plotView, t]);
 
   const renderSemesterGroup = (semesterId, title) => {
     const examsInSemester = existingExams.filter(e => e.semester === semesterId);
     if (examsInSemester.length === 0) return null;
 
+    const isExpanded = expandedSemesters[semesterId] === true;
+
     return (
       <div key={semesterId} style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1rem', color: 'rgba(255,255,255,0.9)', marginBottom: '0.75rem', paddingBottom: '0.25rem', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+        <h3 
+          onClick={() => toggleSemester(semesterId)}
+          style={{ 
+            fontSize: '1rem', 
+            color: 'rgba(255,255,255,0.9)', 
+            marginBottom: '0.75rem', 
+            paddingBottom: '0.25rem', 
+            borderBottom: '1px solid rgba(255,255,255,0.2)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer'
+          }}
+        >
           {title}
+          {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
         </h3>
-        <div className="exam-list" style={{ marginTop: '0' }}>
-          {examsInSemester.map(exam => (
-            <div key={exam.id} className={`exam-item ${exam.excluded ? 'excluded' : ''}`} style={{ opacity: exam.excluded ? 0.4 : 1, transition: 'all 0.3s ease' }}>
+        {isExpanded && (
+          <div className="exam-list" style={{ marginTop: '0' }}>
+          {examsInSemester.map((exam, index) => (
+            <div key={exam.id} className={`exam-item stagger-item ${exam.excluded ? 'excluded' : ''}`} style={{ animationDelay: `${index * 0.05}s` }}>
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, marginRight: '1rem' }}>
-                <span style={{ fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>{exam.name}</span>
+                <span style={{ fontWeight: 600, color: exam.excluded ? 'rgba(255,255,255,0.5)' : '#fff', marginBottom: '0.25rem', transition: 'color 0.3s' }}>{exam.name}</span>
                 <div className="exam-info" style={{ gap: '1rem' }}>
                   <div className="exam-stat">
                     <span className="exam-stat-label">{t("grade")}</span>
-                    <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.grade}</span>
+                    <span className="exam-stat-value font-mono" style={{ fontSize: '0.9rem', color: exam.excluded ? 'rgba(255,255,255,0.5)' : undefined, transition: 'color 0.3s' }}>{exam.grade}</span>
                   </div>
                   <div className="exam-stat">
                     <span className="exam-stat-label">{t("credits")}</span>
-                    <span className="exam-stat-value" style={{ fontSize: '0.9rem' }}>{exam.credits} CFU</span>
+                    <span className="exam-stat-value font-mono" style={{ fontSize: '0.9rem', color: exam.excluded ? 'rgba(255,255,255,0.5)' : undefined, transition: 'color 0.3s' }}>{exam.credits} CFU</span>
                   </div>
                   <div className="exam-stat">
                     <span className="exam-stat-label">{t('date')}</span>
-                    <span className="exam-stat-value" style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.7)' }}>
+                    <span className="exam-stat-value font-mono" style={{ fontSize: '0.9rem', color: exam.excluded ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)', transition: 'color 0.3s' }}>
                       {new Date(exam.date).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                     </span>
                   </div>
@@ -493,6 +563,7 @@ export default function StatsPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
     );
   };
@@ -502,11 +573,11 @@ export default function StatsPage() {
     let min = 30;
     let max = 0;
     chartData.forEach(d => {
-      min = Math.min(min, d['Weighted Average'], d['Arithmetic Average']);
-      max = Math.max(max, d['Weighted Average'], d['Arithmetic Average']);
+      min = Math.min(min, d[t('weightedAvg')], d[t('arithmeticAvg')]);
+      max = Math.max(max, d[t('weightedAvg')], d[t('arithmeticAvg')]);
     });
     return [Math.floor(min) - 1, Math.ceil(max) + 1];
-  }, [chartData]);
+  }, [chartData, t]);
 
   const yTicks = useMemo(() => {
     const ticks = [];
@@ -516,41 +587,69 @@ export default function StatsPage() {
     return ticks;
   }, [yDomain]);
 
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ backgroundColor: 'rgba(10, 8, 9, 0.8)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '10px', backdropFilter: 'blur(20px)', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+          <p style={{ color: '#fff', marginBottom: '5px', fontWeight: 600, fontFamily: 'system-ui, -apple-system, sans-serif' }}>{label}</p>
+          {payload.map((entry, index) => (
+            <div key={index} style={{ color: entry.color, display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <span style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>{entry.name}:</span>
+              <span style={{ fontFamily: 'Roboto Mono, monospace' }}>{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div style={{ animation: 'contentFadeIn 0.3s ease' }}>
       <div className="grid">
         {/* Left Column - Inputs */}
         <div className="input-section">
           
-          <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
-            <h2><BookOpen size={24} /> Your Exams</h2>
-            <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>
-              {t("yourExamsDesc")}
-            </p>
-            
-            {renderSemesterGroup('a1s1', t('semesterA1S1'))}
-            {renderSemesterGroup('a1s2', t('semesterA1S2'))}
-            {renderSemesterGroup('a2s1', t('semesterA2S1'))}
-            {renderSemesterGroup('a2s2', t('semesterA2S2'))}
-            {renderSemesterGroup('a3s1', t('semesterA3S1'))}
-            {renderSemesterGroup('a3s2', t('semesterA3S2'))}
-            {renderSemesterGroup('a4s1', t('semesterA4S1'))}
-            {renderSemesterGroup('a4s2', t('semesterA4S2'))}
-            {renderSemesterGroup('a5s1', t('semesterA5S1'))}
-            {renderSemesterGroup('a5s2', t('semesterA5S2'))}
-            
-            <button 
-              type="button" 
-              className="liquid-glass btn-inner" 
-              onClick={openAddModal}
-              style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '12px' }}
+          <div className="liquid-glass panel" style={{ marginBottom: '1rem' }}>
+            <div 
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: isExamsListExpanded ? '1.5rem' : '0' }}
+              onClick={() => setIsExamsListExpanded(!isExamsListExpanded)}
             >
-              <Plus size={20} /> Add New Exam
-            </button>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}><BookOpen size={24} /> {t("yourExams")}</h2>
+              {isExamsListExpanded ? <ChevronDown size={24} /> : <ChevronRight size={24} />}
+            </div>
+            
+            {isExamsListExpanded && (
+              <>
+                <p style={{ marginBottom: '1.5rem', color: 'rgba(255,255,255,0.8)', fontSize: '0.875rem' }}>
+                  {t("yourExamsDesc")}
+                </p>
+                
+                {renderSemesterGroup('a1s1', t('semesterA1S1'))}
+                {renderSemesterGroup('a1s2', t('semesterA1S2'))}
+                {renderSemesterGroup('a2s1', t('semesterA2S1'))}
+                {renderSemesterGroup('a2s2', t('semesterA2S2'))}
+                {renderSemesterGroup('a3s1', t('semesterA3S1'))}
+                {renderSemesterGroup('a3s2', t('semesterA3S2'))}
+                {renderSemesterGroup('a4s1', t('semesterA4S1'))}
+                {renderSemesterGroup('a4s2', t('semesterA4S2'))}
+                {renderSemesterGroup('a5s1', t('semesterA5S1'))}
+                {renderSemesterGroup('a5s2', t('semesterA5S2'))}
+                
+                <button 
+                  type="button" 
+                  className="liquid-glass btn-inner" 
+                  onClick={openAddModal}
+                  style={{ marginTop: '1rem', padding: '0.75rem', borderRadius: '12px', width: '100%' }}
+                >
+                  <Plus size={20} /> {t('addNewExam')}
+                </button>
+              </>
+            )}
           </div>
 
-          <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
-            <h2><TrendingUp size={24} /> Simulate New Exams</h2>
+          <div className="liquid-glass panel" style={{ marginBottom: '1rem' }}>
+            <h2><TrendingUp size={24} /> {t("simulateNewExams")}</h2>
               <form onSubmit={addSimulatedExam} className="input-row" style={{ flexWrap: 'wrap', marginBottom: 0 }}>
                 <div className="form-group" style={{ minWidth: '100%', marginBottom: '0.5rem' }}>
                   <label>{t("examNameOptional")}</label>
@@ -620,9 +719,9 @@ export default function StatsPage() {
         {/* Right Column - Results and Charts */}
         <div className="results-section">
           
-          <div className="liquid-glass panel results-panel" style={{ marginBottom: '2rem' }}>
+          <div className="liquid-glass panel results-panel" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-              <h2 style={{ margin: 0 }}><GraduationCap size={28} /> Final Projections</h2>
+              <h2 style={{ margin: 0 }}><GraduationCap size={28} /> {t("finalProjections")}</h2>
               <div className="info-tooltip-container">
                 <Info size={20} color="rgba(255,255,255,0.6)" />
                 <div className="info-tooltip-text">
@@ -631,37 +730,47 @@ export default function StatsPage() {
               </div>
             </div>
               
-              <div className="results-grid">
-                <div className="result-card highlight">
+              <div className="results-grid" style={{ marginBottom: '0.5rem' }}>
+                <div className="result-card highlight stagger-item" style={{ animationDelay: '0.1s' }}>
                   <div className="result-label">{t("graduationStartingGrade")}</div>
-                  <div className="result-value">{results.startingGrade} <span style={{fontSize: '1rem', color: 'rgba(255,255,255,0.7)'}}>/ 110</span></div>
+                  <div className="result-value font-mono">{results.startingGrade} <span style={{fontSize: '1rem', color: 'rgba(255,255,255,0.7)'}}>/ 110</span></div>
                 </div>
                 
-                <div className="result-card">
+                <div className="result-card stagger-item" style={{ animationDelay: '0.2s' }}>
                   <div className="result-label">{t("weightedAvg")}</div>
-                  <div className="result-value">{results.weightedAvg}</div>
+                  <div className="result-value font-mono">{results.weightedAvg}</div>
                 </div>
                 
-                <div className="result-card">
+                <div className="result-card stagger-item" style={{ animationDelay: '0.3s' }}>
                   <div className="result-label">{t("arithmeticAvg")}</div>
-                  <div className="result-value">{results.arithmeticAvg}</div>
+                  <div className="result-value font-mono">{results.arithmeticAvg}</div>
                 </div>
 
-                <div className="result-card">
+                <div className="result-card stagger-item" style={{ animationDelay: '0.4s' }}>
                   <div className="result-label">{t("validCredits")}</div>
-                  <div className="result-value">{results.totalCredits}</div>
+                  <div className="result-value font-mono">{results.totalCredits}</div>
+                  <div style={{ width: '100%', maxWidth: '120px', height: '6px', background: 'rgba(255,255,255,0.1)', borderRadius: '3px', margin: '0.75rem auto 0', overflow: 'hidden' }}>
+                    <div style={{ 
+                      height: '100%', 
+                      width: `${Math.min(results.totalCredits / totalDegreeCredits * 100, 100)}%`, 
+                      background: 'linear-gradient(90deg, #ff0844 0%, #ffb199 100%)',
+                      transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' 
+                    }} />
+                  </div>
                 </div>
                 
-                <div className="result-card">
+                <div className="result-card stagger-item" style={{ animationDelay: '0.5s', display: 'flex', flexDirection: 'column', height: '100%' }}>
                   <div className="result-label">{t("validExams")}</div>
-                  <div className="result-value">{results.totalExams}</div>
+                  <div className="result-value font-mono" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {results.totalExams}
+                  </div>
                 </div>
               </div>
           </div>
 
           {/* Reverse Engineering Panel */}
-          <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
-            <h2><Target size={24} /> Goal: Graduation Grade</h2>
+          <div className="liquid-glass panel" style={{ marginBottom: '1rem' }}>
+            <h2><Target size={24} /> {t("goalGraduationGrade")}</h2>
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
               <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                 <label>{t("targetGrade")}</label>
@@ -687,19 +796,19 @@ export default function StatsPage() {
             <div style={{ 
               padding: '1rem', 
               borderRadius: '12px', 
-              backgroundColor: reverseEng.feasible ? 'rgba(131, 9, 43, 0.2)' : 'rgba(0, 0, 0, 0.2)',
-              border: `1px solid ${reverseEng.feasible ? 'rgba(131, 9, 43, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`
+              backgroundColor: reverseEng.colorObj.bg,
+              border: `1px solid ${reverseEng.colorObj.border}`
             }}>
-              <p style={{ margin: 0, fontWeight: 500, color: reverseEng.feasible ? '#fff' : 'rgba(255, 180, 100, 0.9)' }}>
+              <p style={{ margin: 0, fontWeight: 500, color: reverseEng.colorObj.text }}>
                 {reverseEng.message}
               </p>
             </div>
           </div>
 
           {/* Study Heatmap Panel */}
-          <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
+          <div className="liquid-glass panel" style={{ marginBottom: '1rem' }}>
+            <h2><Activity size={24} /> {t('studyHeatmap')}</h2>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem', gap: '1.25rem' }}>
-              <h2 style={{ margin: 0 }}><Activity size={24} /> Study Heatmap</h2>
               <form onSubmit={logStudyHours} style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center' }}>
                 <div style={{ width: '160px' }}>
                   <CustomDatePicker 
@@ -726,9 +835,9 @@ export default function StatsPage() {
           </div>
 
           {/* Chart Panel */}
-          <div className="liquid-glass panel" style={{ marginBottom: '2rem' }}>
+          <div className="liquid-glass panel" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0 }}><BarChart2 size={24} /> Performance Trend</h2>
+              <h2 style={{ margin: 0 }}><BarChart2 size={24} /> {t("performanceTrend")}</h2>
                 
                 {/* Toggle Buttons */}
                 <div style={{ background: 'rgba(0, 0, 0, 0.2)', borderRadius: '0.5rem', padding: '0.25rem' }}>
@@ -755,7 +864,7 @@ export default function StatsPage() {
                         fontSize: '0.875rem', fontWeight: 500
                       }}
                     >
-                      By Exam
+                      {t("byExam")}
                     </button>
                     <button 
                       onClick={() => setPlotView('semester')}
@@ -766,7 +875,7 @@ export default function StatsPage() {
                         fontSize: '0.875rem', fontWeight: 500
                       }}
                     >
-                      By Semester
+                      {t("bySemester")}
                     </button>
                   </div>
                 </div>
@@ -774,45 +883,48 @@ export default function StatsPage() {
 
               <div style={{ height: '300px', width: '100%' }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.3)" />
+                  <LineChart key={plotView} data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                     <XAxis 
                       dataKey="name" 
-                      stroke="#fff" 
+                      stroke="rgba(255,255,255,0.5)" 
                       fontSize={12}
                       tickMargin={10}
+                      axisLine={false}
+                      tickLine={false}
                     />
                     <YAxis 
                       domain={yDomain}
-                      stroke="#fff" 
+                      stroke="rgba(255,255,255,0.5)" 
                       fontSize={12}
                       ticks={yTicks}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(val) => val.toFixed(0)}
                     />
-                    <Tooltip 
-                      contentStyle={{ backgroundColor: 'rgba(0, 0, 0, 0.5)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '0.5rem', color: '#fff', backdropFilter: 'blur(10px)' }}
-                    />
-                    <Legend wrapperStyle={{ paddingTop: '10px' }} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Legend wrapperStyle={{ paddingTop: '10px' }} iconType="circle" />
                     <Line 
                       type="monotone" 
-                      dataKey="Weighted Average" 
-                      stroke="#fff" 
+                      dataKey={t('weightedAvg')}
+                      stroke="#ffffff" 
                       strokeWidth={3}
-                      dot={{ fill: '#fff', strokeWidth: 2 }}
-                      activeDot={{ r: 6 }} 
+                      dot={{ r: 4, fill: '#ffffff', strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: '#ffffff', strokeWidth: 0, style: { filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.8))' } }} 
                     />
                     <Line 
                       type="monotone" 
-                      dataKey="Arithmetic Average" 
-                      stroke="rgba(255,255,255,0.6)" 
-                      strokeWidth={3}
-                      dot={{ fill: 'rgba(255,255,255,0.6)', strokeWidth: 2 }}
-                      activeDot={{ r: 6 }} 
+                      dataKey={t('arithmeticAvg')}
+                      stroke="rgba(255,255,255,0.5)" 
+                      strokeWidth={2}
+                      dot={{ r: 4, fill: 'rgba(255,255,255,0.5)', strokeWidth: 0 }}
+                      activeDot={{ r: 6, fill: 'rgba(255,255,255,0.8)', strokeWidth: 0 }} 
                     />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
               <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'rgba(255,255,255,0.7)', textAlign: 'center' }}>
-                *This chart plots the running average up to each {plotView === 'exam' ? 'exam' : 'semester'}. Simulated exams are excluded.
+                {t(plotView === 'exam' ? 'chartDisclaimerExam' : 'chartDisclaimerSemester')}
               </p>
           </div>
         </div>

@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import Navbar from './components/Navbar';
 import StatsPage from './pages/StatsPage';
-import KanbanPage from './pages/KanbanPage';
 import CustomSelect from './components/CustomSelect';
 import { TranslationProvider, useTranslation } from './i18n';
 import './index.css';
@@ -23,7 +21,6 @@ function LanguageSelector() {
 }
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState('stats');
   const { t } = useTranslation();
 
   return (
@@ -34,9 +31,7 @@ function AppContent() {
         <p>{t('appSubtitle')}</p>
       </header>
 
-      <Navbar currentPage={currentPage} setPage={setCurrentPage} />
-
-      {currentPage === 'stats' ? <StatsPage /> : <KanbanPage />}
+      <StatsPage />
     </div>
   );
 }

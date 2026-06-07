@@ -1,12 +1,16 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, protocol, net } from 'electron';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, URL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure hot reload in development
 const isDev = process.env.NODE_ENV === 'development';
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, bypassCSP: true } }
+]);
 
 let mainWindow;
 
@@ -31,8 +35,8 @@ function createWindow() {
     // Open the DevTools.
     // mainWindow.webContents.openDevTools();
   } else {
-    // In production, load the built HTML file
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    // In production, load via custom protocol
+    mainWindow.loadURL('app://-/index.html');
   }
 
   // Show window when content is loaded
@@ -47,6 +51,13 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  protocol.handle('app', (request) => {
+    const url = new URL(request.url);
+    const decodedPath = decodeURIComponent(url.pathname);
+    const filePath = path.join(__dirname, '../dist', decodedPath);
+    return net.fetch('file://' + filePath);
+  });
+
   createWindow();
 
   app.on('activate', () => {
